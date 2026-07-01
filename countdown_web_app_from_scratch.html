@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Countdown from Scratch</title>
+    <style>
+        /* 1. MODERN & CLEAN DESIGN SYSTEM */
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --radius-lg: 24px;
+            --radius-sm: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Ambient glow in background for high-fidelity feel */
+        .ambient-glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0,0,0,0) 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 550px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 35px;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            position: relative;
+            z-index: 10;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* 2. TRANSITIONS & SCREEN CONTROLLERS */
+        .screen {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        /* SETUP SCREEN SPECIFIC UI */
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #a5b4fc, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 28px;
+        }
+
+        .config-panel {
+            background: rgba(15, 23, 42, 0.45);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 24px;
+            text-align: left;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* 3. DISTRACTION-FREE TRACKING SCREEN (DD : HH : MIN : SEC) */
+        .countdown-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 25px;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+        }
+
+        .timer-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin: 30px 0;
+        }
+
+        .time-block {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-sm);
+            padding: 22px 5px;
+            min-height: 110px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .time-value {
+            font-size: 2.6rem;
+            font-weight: 900;
+            color: var(--text-main);
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .time-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-top: 10px;
+        }
+
+        .separator {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            padding-bottom: 28px; /* Alignment adjustment */
+            user-select: none;
+            animation: pulse 2s infinite;
+        }
+
+        /* Subtle return handle */
+        .btn-minimal {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 999px;
+            width: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: none;
+            margin-top: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-minimal:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Responsive scaling for mobile devices */
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px 20px;
+            }
+            .time-value {
+                font-size: 1.8rem;
+            }
+            .separator {
+                font-size: 1.5rem;
+                padding-bottom: 22px;
+            }
+            .time-block {
+                min-height: 90px;
+                padding: 16px 2px;
+            }
+        }
+
+        /* Status Banner */
+        .status-message {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px dashed rgba(16, 185, 129, 0.2);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-glow"></div>
+
+    <div class="container">
+        
+        <!-- ================= SCREEN 1: SETUP VIEW ================= -->
+        <div id="setup-view" class="screen">
+            <h1>Chronos Core</h1>
+            <p class="subtitle">Set your target date to begin</p>
+
+            <div class="config-panel">
+                <div class="form-group">
+                    <label for="input-title">Event Title</label>
+                    <input type="text" id="input-title" value="My Epic Milestone">
+                </div>
+                <div class="form-group">
+                    <label for="input-date">Target Date</label>
+                    <input type="date" id="input-date">
+                </div>
+                <div class="form-group" style="margin-top: 24px;">
+                    <button id="btn-start" onclick="initializeCountdown()">Sync & Start Tracker</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 2: IMMERSIVE TRACKING VIEW ================= -->
+        <div id="tracker-view" class="screen hidden">
+            <!-- Event Title Display -->
+            <div id="display-title" class="countdown-title">Countdown</div>
+            
+            <!-- Immersive DD : HH : MIN : SEC Layout -->
+            <div class="timer-display">
+                <div class="time-block">
+                    <span id="days-val" class="time-value">00</span>
+                    <span class="time-label">DD</span>
+                </div>
+                <div class="separator">:</div>
+                <div class="time-block">
+                    <span id="hours-val" class="time-value">00</span>
+                    <span class="time-label">HH</span>
+                </div>
+                <div class="separator">:</div>
+                <div class="time-block">
+                    <span id="minutes-val" class="time-value">00</span>
+                    <span class="time-label">MIN</span>
+                </div>
+                <div class="separator">:</div>
+                <div class="time-block">
+                    <span id="seconds-val" class="time-value">00</span>
+                    <span class="time-label">SEC</span>
+                </div>
+            </div>
+
+            <!-- Optional status banner -->
+            <div id="status-banner" class="status-message" style="display: none;"></div>
+
+            <!-- Mini Edit / Return controls -->
+            <div>
+                <button class="btn-minimal" onclick="showSetupScreen()">
+                    <span style="font-size: 1.1em;">✎</span> Edit Setup
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Core Engine -->
+    <script>
+        let countdownTimer = null;
+
+        // Auto-populate target date input with today's date + 7 days
+        window.addEventListener('DOMContentLoaded', () => {
+            const defaultDate = new Date();
+            defaultDate.setDate(defaultDate.getDate() + 7);
+            
+            // Format to match 'yyyy-MM-dd'
+            const yyyy = defaultDate.getFullYear();
+            const mm = String(defaultDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(defaultDate.getDate()).padStart(2, '0');
+            const formatted = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('input-date').value = formatted;
+        });
+
+        /**
+         * Checks form fields, shifts UI panels, and spins up the live animation cycle
+         */
+        function initializeCountdown() {
+            const titleInput = document.getElementById('input-title').value.trim();
+            const dateInput = document.getElementById('input-date').value;
+
+            if (!dateInput) {
+                alert("Please select a valid date first!");
+                return;
+            }
+
+            // Parse date strictly as local midnight (00:00:00) to avoid timezone discrepancies
+            const dateParts = dateInput.split('-');
+            const targetDate = new Date(
+                parseInt(dateParts[0], 10),
+                parseInt(dateParts[1], 10) - 1,
+                parseInt(dateParts[2], 10),
+                0, 0, 0, 0
+            );
+
+            // 1. Shift views: Hide setup panel, show tracking view
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('tracker-view').classList.remove('hidden');
+
+            // 2. Clear any active countdown timers before firing new loops
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+            }
+
+            // 3. Sync & bind event titles
+            document.getElementById('display-title').innerText = titleInput || "Countdown";
+
+            // 4. Fire ticker cycle immediately
+            updateClock(targetDate);
+            countdownTimer = setInterval(() => {
+                updateClock(targetDate);
+            }, 1000);
+        }
+
+        /**
+         * Reverts UI screen back to editing inputs
+         */
+        function showSetupScreen() {
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+            }
+            document.getElementById('tracker-view').classList.add('hidden');
+            document.getElementById('setup-view').classList.remove('hidden');
+        }
+
+        /**
+         * Ticking loop calculations
+         */
+        function updateClock(targetDate) {
+            const now = new Date();
+            const statusBanner = document.getElementById('status-banner');
+            let diffMs = targetDate.getTime() - now.getTime();
+
+            if (diffMs <= 0) {
+                clearInterval(countdownTimer);
+                renderTime(0, 0, 0, 0);
+                statusBanner.innerText = "🎉 Your milestone has arrived!";
+                statusBanner.style.display = "block";
+                return;
+            }
+
+            statusBanner.style.display = "none";
+
+            const msInDay = 1000 * 60 * 60 * 24;
+            const msInHour = 1000 * 60 * 60;
+            const msInMinute = 1000 * 60;
+            const msInSecond = 1000;
+
+            const days = Math.floor(diffMs / msInDay);
+            const hours = Math.floor((diffMs % msInDay) / msInHour);
+            const minutes = Math.floor((diffMs % msInHour) / msInMinute);
+            const seconds = Math.floor((diffMs % msInMinute) / msInSecond);
+
+            renderTime(days, hours, minutes, seconds);
+        }
+
+        /**
+         * Safely renders digits to the page with padded formatting
+         */
+        function renderTime(d, h, m, s) {
+            document.getElementById('days-val').innerText = String(d).padStart(2, '0');
+            document.getElementById('hours-val').innerText = String(h).padStart(2, '0');
+            document.getElementById('minutes-val').innerText = String(m).padStart(2, '0');
+            document.getElementById('seconds-val').innerText = String(s).padStart(2, '0');
+        }
+    </script>
+</body>
+</html>
